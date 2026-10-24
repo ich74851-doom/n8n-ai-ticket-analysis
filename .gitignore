@@ -1,0 +1,23 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Local n8n data / exports that may contain real data or credentials
+.n8n/
+n8n-data/
+*.credentials.json
+credentials*.json
+exports/
+real-data/
+.env
+.env.*
+!.env.example
+
+# Generated output from real runs (sample output lives in sample-data/)
+output/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
