@@ -1,0 +1,12 @@
+Analyse the support tickets below for client "{{CLIENT_NAME}}".
+
+Analysis period: {{PERIOD_START}} to {{PERIOD_END}}
+
+Pre-computed ticket statistics (deterministic, from the PSA data):
+{{TICKET_STATS_JSON}}
+
+Tickets in the analysis period (JSON array, text already cleaned and redacted):
+{{TICKETS_JSON}}
+
+Return a JSON object that matches this schema exactly:
+{{OUTPUT_SCHEMA_JSON}}

@@ -1,0 +1,23 @@
+{
+  "client_summary": "string - 3 to 5 sentences: overall support picture for the period",
+  "recurring_issues": [
+    {
+      "title": "string - short name of the recurring problem",
+      "ticket_count": "integer - number of tickets in this cluster",
+      "ticket_numbers": ["string - ticket numbers that belong to this cluster"],
+      "category": "string - one of: backup, endpoint, network, identity, email, security, application, hardware, other",
+      "likely_root_cause": "string - most likely underlying cause, or 'unclear' with how to confirm",
+      "remediation": ["string - concrete step"]
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "title": "string",
+      "severity": "string - low | medium | high",
+      "evidence_ticket_numbers": ["string"],
+      "recommendation": "string"
+    }
+  ],
+  "proactive_opportunities": ["string - preventive improvement or service suggestion"],
+  "documentation_notes": ["string - facts worth adding to the client's documentation (environment, recurring procedures, known issues)"]
+}
