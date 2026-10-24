@@ -141,11 +141,11 @@ Markdown passes markdownlint. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Planned work is tracked in [GitHub issues](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues).
 
-- [ ] Support other PSAs (ConnectWise Manage, HaloPSA) behind a common ticket format
-- [ ] Unit tests for risk-index scoring and the cleaning/redaction functions
-- [ ] Docker Compose setup for running n8n locally with the template pre-imported
-- [ ] Autotask pagination (`nextPageUrl`) for more than 500 tickets
-- [ ] Automated pull-request review and release notes with an LLM (OpenAI Codex) in CI
+- [ ] Support other PSAs (ConnectWise Manage, HaloPSA) behind a common ticket format ([#1](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues/1))
+- [ ] Unit tests for risk-index scoring and the cleaning/redaction functions ([#2](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues/2))
+- [ ] Docker Compose setup for running n8n locally with the template pre-imported ([#3](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues/3))
+- [ ] Autotask pagination (`nextPageUrl`) for more than 500 tickets ([#5](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues/5))
+- [ ] Automated pull-request review and release notes with an LLM (OpenAI Codex) in CI ([#4](https://github.com/ich74851-doom/n8n-ai-ticket-analysis/issues/4))
 
 ## License
 
