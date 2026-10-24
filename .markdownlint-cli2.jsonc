@@ -1,0 +1,13 @@
+{
+  "config": {
+    "default": true,
+    // Long lines are fine in tables, links and generated reports.
+    "MD013": false,
+    // Inline HTML (<br/> in the mermaid diagram labels) and duplicate headings in generated reports.
+    "MD033": false,
+    "MD024": { "siblings_only": true },
+    // The Contributor Covenant text is used verbatim.
+    "MD041": false
+  },
+  "ignores": ["node_modules/**", "CODE_OF_CONDUCT.md"]
+}

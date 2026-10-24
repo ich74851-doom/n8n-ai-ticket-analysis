@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in the workflow, scripts or docs does not work as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. **Do not paste real ticket data, client names, API keys or credentials.** Use fictional examples.
+        For security issues, use the private process in SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Import workflow/ticket-analysis.json
+        2. Run node "..."
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Affected node or script
+      placeholder: e.g. "Clean & group by client" or scripts/run-sample.mjs
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message / logs (redacted)
+      render: text
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n version
+      placeholder: e.g. 2.8.4 (self-hosted, Docker)
+  - type: input
+    id: release
+    attributes:
+      label: Template version
+      placeholder: e.g. v1.0.0 or commit SHA
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I have removed all real data and secrets from this report.
+          required: true

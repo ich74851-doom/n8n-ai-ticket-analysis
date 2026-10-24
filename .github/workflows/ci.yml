@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow:
+    name: Validate n8n workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Workflow JSON is in sync with src/ and prompts/
+        run: node scripts/build-workflow.mjs --check
+
+      - name: Validate workflow structure, Code node syntax and secrets
+        run: node scripts/validate-workflow.mjs
+
+      - name: All JSON files parse
+        run: |
+          find . -name '*.json' -not -path './node_modules/*' -not -path './.git/*' -print0 |
+            xargs -0 -n1 node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))'
+
+      - name: Sample output is reproducible
+        run: node scripts/run-sample.mjs --check
+
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run markdownlint-cli2
+        run: npx --yes markdownlint-cli2@0.18.1 "**/*.md"
