@@ -16,29 +16,15 @@ growth/risk index to show which clients need proactive work first.
 > credentials and no employer-specific configuration**. All tickets, companies and
 > outputs in [`sample-data/`](sample-data/) are fictional.
 
----
+## Overview
 
-## What it does
+MSP service teams close hundreds of tickets a month, but the patterns behind them (the
+same backup failure every week, a client whose volume is doubling, a security gap that
+keeps causing incidents) are easy to miss. This workflow reads the tickets for a period,
+compares them with the previous period and produces a short, evidence-based report per
+client, so account managers and engineers know where proactive work pays off.
 
-- **Pulls tickets** for the current period and the previous period of the same length
-  from Autotask (`POST /Tickets/query`), then resolves company names
-  (`POST /Companies/query`).
-- **Cleans and minimises data**: strips HTML, redacts email addresses, phone numbers and
-  IP addresses, truncates long descriptions, and sends only the fields the analysis needs.
-- **Groups tickets by client** and calculates deterministic statistics: volume trend,
-  high-priority share, aging backlog and repeating categories.
-- **Analyses each client with Claude**, using [prompt templates](prompts/) and a strict
-  JSON [output schema](prompts/output-schema.json). Output:
-  - a client summary
-  - recurring issues with the ticket numbers behind them, the likely root cause and
-    remediation steps
-  - vulnerabilities flagged from ticket evidence, rated low/medium/high
-  - proactive opportunities and documentation notes
-- **Scores a growth/risk index (0-100)** for each client with an
-  [explainable formula](docs/risk-index.md), and produces Markdown client reports plus
-  a portfolio summary sorted by risk.
-
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -70,7 +56,39 @@ flowchart LR
 | 10 | Build client documentation | Code |
 | 11 | Deliver reports (configure me) | HTTP Request, **disabled** by default |
 
-## Example output
+## Features
+
+- **Pulls tickets** for the current period and the previous period of the same length
+  from Autotask (`POST /Tickets/query`), then resolves company names
+  (`POST /Companies/query`).
+- **Cleans and minimises data**: strips HTML, redacts email addresses, phone numbers and
+  IP addresses, truncates long descriptions, and sends only the fields the analysis needs.
+- **Groups tickets by client** and calculates deterministic statistics: volume trend,
+  high-priority share, aging backlog and repeating categories.
+- **Analyses each client with Claude**, using [prompt templates](prompts/) and a strict
+  JSON [output schema](prompts/output-schema.json). Output:
+  - a client summary
+  - recurring issues with the ticket numbers behind them, the likely root cause and
+    remediation steps
+  - vulnerabilities flagged from ticket evidence, rated low/medium/high
+  - proactive opportunities and documentation notes
+- **Scores a growth/risk index (0-100)** for each client with an
+  [explainable formula](docs/risk-index.md), and produces Markdown client reports plus
+  a portfolio summary sorted by risk.
+
+## Quick start
+
+1. Import [`workflow/ticket-analysis.json`](workflow/ticket-analysis.json) into n8n.
+2. Create two credentials: **Autotask API** (Custom Auth headers) and **Claude API**
+   (Header Auth `x-api-key`).
+3. Set your Autotask zone URL and period in the **Config** node.
+4. Run it manually, review the output, then activate the schedule.
+
+See the [setup guide](docs/setup.md) for details and a data protection checklist.
+
+## Usage
+
+### Example output
 
 Generated offline from the fictional sample data (`node scripts/run-sample.mjs`):
 
@@ -84,17 +102,19 @@ Generated offline from the fictional sample data (`node scripts/run-sample.mjs`)
 - Portfolio summary: [`portfolio-summary.json`](sample-data/example-output/portfolio-summary.json)
 - The exact request sent to Claude: [`claude-request-example.json`](sample-data/example-output/claude-request-example.json)
 
-## Quick start
+### Design choices
 
-1. Import [`workflow/ticket-analysis.json`](workflow/ticket-analysis.json) into n8n.
-2. Create two credentials: **Autotask API** (Custom Auth headers) and **Claude API**
-   (Header Auth `x-api-key`).
-3. Set your Autotask zone URL and period in the **Config** node.
-4. Run it manually, review the output, then activate the schedule.
+- **Count in code, judge with the LLM.** Volumes, priorities and aging are calculated
+  in code. Claude handles only clustering and interpretation, so the index stays
+  explainable and stable.
+- **Data minimisation by default.** Only title and description text, truncated and
+  redacted, reaches the LLM.
+- **Human in the loop.** Reports are drafts for the service team, and delivery is
+  disabled until you configure it.
+- **Core nodes only.** No community nodes are needed, which makes it easy to review
+  and to run in locked-down n8n instances.
 
-See the [setup guide](docs/setup.md) for details and a data protection checklist.
-
-## Repository layout
+## Project structure
 
 ```text
 .
@@ -111,7 +131,7 @@ See the [setup guide](docs/setup.md) for details and a data protection checklist
     └── run-sample.mjs              # runs the Code nodes offline on sample data
 ```
 
-## Development
+## Testing
 
 Requires Node.js 18 or later. No dependencies need installing.
 
@@ -124,18 +144,6 @@ node scripts/run-sample.mjs              # regenerate sample-data/example-output
 CI checks on every push and pull request that the workflow JSON is valid and in sync
 with `src/` and `prompts/`, that the sample output is reproducible, and that the
 Markdown passes markdownlint. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Design choices
-
-- **Count in code, judge with the LLM.** Volumes, priorities and aging are calculated
-  in code. Claude handles only clustering and interpretation, so the index stays
-  explainable and stable.
-- **Data minimisation by default.** Only title and description text, truncated and
-  redacted, reaches the LLM.
-- **Human in the loop.** Reports are drafts for the service team, and delivery is
-  disabled until you configure it.
-- **Core nodes only.** No community nodes are needed, which makes it easy to review
-  and to run in locked-down n8n instances.
 
 ## Roadmap
 
