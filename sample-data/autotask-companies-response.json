@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": 1001,
+      "companyName": "Contoso Dental (fictional)"
+    },
+    {
+      "id": 1002,
+      "companyName": "Fabrikam Logistics (fictional)"
+    },
+    {
+      "id": 1003,
+      "companyName": "Northwind Traders (fictional)"
+    },
+    {
+      "id": 1004,
+      "companyName": "Tailspin Toys (fictional)"
+    }
+  ],
+  "pageDetails": {
+    "count": 4,
+    "requestCount": 500,
+    "prevPageUrl": null,
+    "nextPageUrl": null
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "portfolio-summary",
+  "generatedAt": "2026-10-01T07:00:00.000Z",
+  "clients": [
+    {
+      "clientName": "Contoso Dental (fictional)",
+      "riskIndex": 68,
+      "riskBand": "Elevated",
+      "recurringIssues": 2,
+      "vulnerabilities": 2
+    },
+    {
+      "clientName": "Fabrikam Logistics (fictional)",
+      "riskIndex": 32,
+      "riskBand": "Moderate",
+      "recurringIssues": 2,
+      "vulnerabilities": 1
+    },
+    {
+      "clientName": "Northwind Traders (fictional)",
+      "riskIndex": 21,
+      "riskBand": "Low",
+      "recurringIssues": 1,
+      "vulnerabilities": 1
+    }
+  ]
+}
