@@ -1,0 +1,467 @@
+{
+  "name": "AI ticket analysis: Autotask + Claude (sanitized template)",
+  "nodes": [
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000001",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -40
+      ],
+      "parameters": {
+        "width": 520,
+        "height": 260,
+        "content": "## AI ticket analysis (sanitized template)\n1. Create an **Autotask API** credential (Custom Auth) with the JSON headers `ApiIntegrationCode`, `UserName` and `Secret` from an API-only Autotask user.\n2. Create a **Claude API** credential (Header Auth): name `x-api-key`, value = your Anthropic API key.\n3. Edit the **Config** node: your Autotask zone URL, look-back window and model.\n4. Run manually first, check the output, then enable the schedule.\n\nNo credentials or client data are included in this template."
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000002",
+      "name": "Manual run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        240
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000003",
+      "name": "Weekly schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -260,
+        420
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000004",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0f19000-0000-4000-8000-000000000001",
+              "name": "autotaskBaseUrl",
+              "value": "https://webservicesN.autotask.net/ATServicesRest/V1.0",
+              "type": "string"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000002",
+              "name": "lookbackDays",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000003",
+              "name": "maxTickets",
+              "value": 500,
+              "type": "number"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000004",
+              "name": "minTicketsPerClient",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000005",
+              "name": "agingDays",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000006",
+              "name": "highPriorityValues",
+              "value": "1,4",
+              "type": "string"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000007",
+              "name": "claudeModel",
+              "value": "claude-sonnet-4-5",
+              "type": "string"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000008",
+              "name": "maxTokens",
+              "value": 4000,
+              "type": "number"
+            },
+            {
+              "id": "c0f19000-0000-4000-8000-000000000009",
+              "name": "referenceDate",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000005",
+      "name": "Build ticket query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Build ticket query\" (mode: Run Once for All Items)\n// Works out the analysis window and builds the Autotask REST query body.\n// Two windows are fetched (current + previous period of the same length)\n// so that ticket volume trends can be compared.\n\nconst config = $('Config').first().json;\n\nconst lookbackDays = Number(config.lookbackDays) || 30;\nconst now = config.referenceDate ? new Date(config.referenceDate) : new Date();\nif (Number.isNaN(now.getTime())) {\n  throw new Error(`Config.referenceDate is not a valid date: ${config.referenceDate}`);\n}\n\nconst DAY_MS = 24 * 60 * 60 * 1000;\nconst currentStart = new Date(now.getTime() - lookbackDays * DAY_MS);\nconst previousStart = new Date(now.getTime() - 2 * lookbackDays * DAY_MS);\n\n// Autotask REST API query: POST /Tickets/query\n// Only the fields the analysis needs are requested (data minimisation).\nconst queryBody = {\n  MaxRecords: Number(config.maxTickets) || 500,\n  IncludeFields: [\n    'id', 'ticketNumber', 'title', 'description', 'companyID',\n    'createDate', 'completedDate', 'status', 'priority',\n    'issueType', 'subIssueType', 'queueID',\n  ],\n  filter: [\n    { op: 'gte', field: 'createDate', value: previousStart.toISOString() },\n  ],\n};\n\nreturn [{\n  json: {\n    queryBody,\n    now: now.toISOString(),\n    currentStart: currentStart.toISOString(),\n    previousStart: previousStart.toISOString(),\n    lookbackDays,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000006",
+      "name": "Autotask: query tickets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.autotaskBaseUrl }}/Tickets/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.queryBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "REPLACE_ME_AUTOTASK",
+          "name": "Autotask API (placeholder)"
+        }
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000007",
+      "name": "Build company query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Build company query\" (mode: Run Once for All Items)\n// Collects the distinct company IDs from the ticket query so their names\n// can be looked up in one request.\n\nconst response = $input.first().json;\nconst tickets = Array.isArray(response.items) ? response.items : [];\n\nif (response.pageDetails && response.pageDetails.nextPageUrl) {\n  // The template reads one page (Config.maxTickets, max 500 per Autotask page).\n  // See the README roadmap for pagination support.\n  console.log('Autotask returned more tickets than one page; only the first page is analysed.');\n}\n\nconst companyIds = [...new Set(tickets.map((t) => t.companyID).filter((id) => id !== null && id !== undefined))];\n\nreturn [{\n  json: {\n    ticketCount: tickets.length,\n    companyIds,\n    queryBody: {\n      IncludeFields: ['id', 'companyName'],\n      filter: [{ op: 'in', field: 'id', value: companyIds.length ? companyIds : [0] }],\n    },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000008",
+      "name": "Autotask: query companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.autotaskBaseUrl }}/Companies/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.queryBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "REPLACE_ME_AUTOTASK",
+          "name": "Autotask API (placeholder)"
+        }
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000009",
+      "name": "Clean & group by client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Clean & group by client\" (mode: Run Once for All Items)\n// 1. Cleans ticket text (strips HTML, redacts emails / phone numbers / IPs, truncates).\n// 2. Groups tickets by client and splits them into the current and previous period.\n// 3. Computes deterministic statistics used by the prompt and the risk index.\n// Outputs one item per client that has at least Config.minTicketsPerClient tickets.\n\nconst config = $('Config').first().json;\nconst windowInfo = $('Build ticket query').first().json;\nconst tickets = $('Autotask: query tickets').first().json.items || [];\nconst companies = $('Autotask: query companies').first().json.items || [];\n\nconst minTickets = Number(config.minTicketsPerClient) || 3;\nconst agingDays = Number(config.agingDays) || 14;\nconst highPriorityValues = String(config.highPriorityValues || '1,4')\n  .split(',').map((v) => Number(v.trim())).filter((v) => !Number.isNaN(v));\nconst DAY_MS = 24 * 60 * 60 * 1000;\n\nconst now = new Date(windowInfo.now);\nconst currentStart = new Date(windowInfo.currentStart);\n\nconst companyNames = new Map(companies.map((c) => [c.id, c.companyName]));\n\nfunction cleanText(value, maxLength) {\n  if (!value) return '';\n  return String(value)\n    .replace(/<[^>]*>/g, ' ')                                   // HTML tags\n    .replace(/&nbsp;|&amp;|&lt;|&gt;|&quot;|&#39;/g, ' ')        // common entities\n    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, '[email]') // email addresses\n    .replace(/\\+?\\d[\\d\\s().-]{7,}\\d/g, '[phone]')                // phone-like numbers\n    .replace(/\\b\\d{1,3}(?:\\.\\d{1,3}){3}\\b/g, '[ip]')             // IPv4 addresses\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .slice(0, maxLength);\n}\n\nconst byClient = new Map();\nfor (const t of tickets) {\n  const key = t.companyID;\n  if (!byClient.has(key)) byClient.set(key, []);\n  byClient.get(key).push(t);\n}\n\nconst results = [];\nfor (const [companyId, clientTickets] of byClient) {\n  const current = clientTickets.filter((t) => new Date(t.createDate) >= currentStart);\n  const previous = clientTickets.filter((t) => new Date(t.createDate) < currentStart);\n  if (current.length < minTickets) continue;\n\n  // Category = issueType/subIssueType pair. Picklist IDs differ per Autotask\n  // instance, so IDs are used as-is; map them to labels if you need readable output.\n  const categoryCounts = {};\n  for (const t of current) {\n    const category = `${t.issueType ?? 'none'}/${t.subIssueType ?? 'none'}`;\n    categoryCounts[category] = (categoryCounts[category] || 0) + 1;\n  }\n  const recurringCategoryTickets = Object.values(categoryCounts)\n    .filter((n) => n >= 3)\n    .reduce((sum, n) => sum + n, 0);\n\n  const highPriority = current.filter((t) => highPriorityValues.includes(Number(t.priority))).length;\n  const agingOpen = current.filter((t) => !t.completedDate\n    && (now.getTime() - new Date(t.createDate).getTime()) / DAY_MS > agingDays).length;\n\n  results.push({\n    json: {\n      companyId,\n      clientName: companyNames.get(companyId) || `Company ${companyId}`,\n      periodStart: windowInfo.currentStart.slice(0, 10),\n      periodEnd: windowInfo.now.slice(0, 10),\n      stats: {\n        currentTickets: current.length,\n        previousTickets: previous.length,\n        highPriorityTickets: highPriority,\n        openOlderThanAgingDays: agingOpen,\n        agingDays,\n        recurringCategoryTickets,\n        categoryCounts,\n      },\n      tickets: current.map((t) => ({\n        ticketNumber: t.ticketNumber,\n        created: t.createDate,\n        completed: t.completedDate || null,\n        priority: t.priority,\n        category: `${t.issueType ?? 'none'}/${t.subIssueType ?? 'none'}`,\n        title: cleanText(t.title, 200),\n        description: cleanText(t.description, 1000),\n      })),\n    },\n  });\n}\n\nreturn results;\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000010",
+      "name": "Build Claude request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Build Claude request\" (mode: Run Once for All Items)\n// Fills the prompt templates (from prompts/ in the repository, embedded at build\n// time by scripts/build-workflow.mjs) and builds an Anthropic Messages API body\n// for each client.\n\nconst config = $('Config').first().json;\n\nconst SYSTEM_PROMPT = \"You are a senior MSP service analyst. You review IT support tickets for one client of a managed service provider and produce structured, factual documentation for the service team.\\n\\nRules:\\n- Base every statement only on the tickets and statistics provided. Do not invent systems, users, incidents or numbers.\\n- Group tickets that describe the same underlying problem into one recurring issue, even if the wording differs.\\n- A recurring issue needs at least 2 tickets. Reference the ticket numbers that support it.\\n- Separate likely root causes from symptoms. If the root cause is unclear, say so and propose how to confirm it.\\n- Flag security weaknesses and vulnerabilities only when the tickets show evidence of them (for example phishing reports, missing patches, failed backups, end-of-life systems, disabled MFA, excessive admin rights). Rate each as low, medium or high.\\n- Remediation steps must be concrete and actionable by an MSP technician.\\n- Proactive opportunities are improvements or services that would prevent the recurring issues. Keep them practical and avoid sales language.\\n- Ticket text has already been redacted. Never try to reconstruct removed personal data.\\n- Respond with a single JSON object that matches the schema you are given. No markdown fences and no text outside the JSON.\";\nconst USER_PROMPT_TEMPLATE = \"Analyse the support tickets below for client \\\"{{CLIENT_NAME}}\\\".\\n\\nAnalysis period: {{PERIOD_START}} to {{PERIOD_END}}\\n\\nPre-computed ticket statistics (deterministic, from the PSA data):\\n{{TICKET_STATS_JSON}}\\n\\nTickets in the analysis period (JSON array, text already cleaned and redacted):\\n{{TICKETS_JSON}}\\n\\nReturn a JSON object that matches this schema exactly:\\n{{OUTPUT_SCHEMA_JSON}}\";\nconst OUTPUT_SCHEMA = {\"client_summary\":\"string - 3 to 5 sentences: overall support picture for the period\",\"recurring_issues\":[{\"title\":\"string - short name of the recurring problem\",\"ticket_count\":\"integer - number of tickets in this cluster\",\"ticket_numbers\":[\"string - ticket numbers that belong to this cluster\"],\"category\":\"string - one of: backup, endpoint, network, identity, email, security, application, hardware, other\",\"likely_root_cause\":\"string - most likely underlying cause, or 'unclear' with how to confirm\",\"remediation\":[\"string - concrete step\"]}],\"vulnerabilities\":[{\"title\":\"string\",\"severity\":\"string - low | medium | high\",\"evidence_ticket_numbers\":[\"string\"],\"recommendation\":\"string\"}],\"proactive_opportunities\":[\"string - preventive improvement or service suggestion\"],\"documentation_notes\":[\"string - facts worth adding to the client's documentation (environment, recurring procedures, known issues)\"]};\n\nfunction fill(template, values) {\n  return Object.entries(values).reduce(\n    (text, [key, value]) => text.split(`{{${key}}}`).join(value),\n    template,\n  );\n}\n\nreturn $input.all().map((item) => {\n  const c = item.json;\n  const userPrompt = fill(USER_PROMPT_TEMPLATE, {\n    CLIENT_NAME: c.clientName,\n    PERIOD_START: c.periodStart,\n    PERIOD_END: c.periodEnd,\n    TICKET_STATS_JSON: JSON.stringify(c.stats, null, 2),\n    TICKETS_JSON: JSON.stringify(c.tickets, null, 2),\n    OUTPUT_SCHEMA_JSON: JSON.stringify(OUTPUT_SCHEMA, null, 2),\n  });\n\n  return {\n    json: {\n      companyId: c.companyId,\n      clientName: c.clientName,\n      requestBody: {\n        model: config.claudeModel,\n        max_tokens: Number(config.maxTokens) || 4000,\n        temperature: 0.2,\n        system: SYSTEM_PROMPT,\n        messages: [{ role: 'user', content: userPrompt }],\n      },\n    },\n  };\n});\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000011",
+      "name": "Claude: analyse client tickets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_CLAUDE",
+          "name": "Claude API (placeholder)"
+        }
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000012",
+      "name": "Parse analysis & score risk index",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Parse analysis & score risk index\" (mode: Run Once for All Items)\n// Parses Claude's JSON answer for each client and calculates the growth/risk\n// index described in docs/risk-index.md. Items arrive in the same order as the\n// \"Clean & group by client\" output (one Claude call per client).\n\nconst clients = $('Clean & group by client').all();\n\n// Weights must add up to 100. See docs/risk-index.md before changing them.\nconst WEIGHTS = { volumeTrend: 20, recurrence: 25, severity: 20, security: 25, backlog: 10 };\nconst SEVERITY_POINTS = { low: 1, medium: 2, high: 3 };\n\nconst clamp01 = (n) => Math.max(0, Math.min(1, n));\nconst round2 = (n) => Math.round(n * 100) / 100;\n\nfunction parseClaudeResponse(body) {\n  const text = (body.content || [])\n    .filter((part) => part.type === 'text')\n    .map((part) => part.text)\n    .join('')\n    .trim()\n    .replace(/^```(?:json)?\\s*/i, '')   // tolerate accidental code fences\n    .replace(/\\s*```$/, '');\n  try {\n    return { analysis: JSON.parse(text), parseError: null };\n  } catch (error) {\n    return { analysis: null, parseError: `Could not parse model output as JSON: ${error.message}` };\n  }\n}\n\nfunction band(score) {\n  if (score >= 75) return 'High';\n  if (score >= 50) return 'Elevated';\n  if (score >= 25) return 'Moderate';\n  return 'Low';\n}\n\nreturn $input.all().map((item, index) => {\n  const client = clients[index].json;\n  const s = client.stats;\n  const { analysis, parseError } = parseClaudeResponse(item.json);\n\n  const recurringIssues = analysis?.recurring_issues || [];\n  const vulnerabilities = analysis?.vulnerabilities || [];\n\n  // 1. Volume trend: full score when volume doubles versus the previous period.\n  const trendRatio = s.currentTickets / Math.max(s.previousTickets, 1);\n  const volumeTrend = clamp01(trendRatio - 1);\n\n  // 2. Recurrence: share of tickets in recurring clusters (AI clusters or\n  //    deterministic category repeats, whichever is higher).\n  const aiRecurring = Math.min(\n    recurringIssues.reduce((sum, r) => sum + (Number(r.ticket_count) || 0), 0),\n    s.currentTickets,\n  );\n  const recurrence = clamp01(Math.max(aiRecurring, s.recurringCategoryTickets) / s.currentTickets);\n\n  // 3. Severity: share of high/critical priority tickets.\n  const severity = clamp01(s.highPriorityTickets / s.currentTickets);\n\n  // 4. Security: weighted vulnerability points; 6 points (e.g. two high) = full score.\n  const securityPoints = vulnerabilities.reduce(\n    (sum, v) => sum + (SEVERITY_POINTS[String(v.severity).toLowerCase()] || 0), 0);\n  const security = clamp01(securityPoints / 6);\n\n  // 5. Backlog: share of tickets still open after the aging threshold; 50% = full score.\n  const backlog = clamp01((s.openOlderThanAgingDays / s.currentTickets) * 2);\n\n  const components = { volumeTrend, recurrence, severity, security, backlog };\n  const riskIndex = Math.round(\n    Object.entries(WEIGHTS).reduce((sum, [key, weight]) => sum + weight * components[key], 0),\n  );\n\n  return {\n    json: {\n      companyId: client.companyId,\n      clientName: client.clientName,\n      periodStart: client.periodStart,\n      periodEnd: client.periodEnd,\n      stats: s,\n      riskIndex,\n      riskBand: band(riskIndex),\n      confidence: s.currentTickets >= 10 ? 'normal' : 'low (fewer than 10 tickets)',\n      components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, round2(v)])),\n      analysis,\n      parseError,\n    },\n  };\n});\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000013",
+      "name": "Build client documentation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Build client documentation\" (mode: Run Once for All Items)\n// Turns each scored analysis into client-ready Markdown, and adds one portfolio\n// summary item sorted by risk index.\n\nconst list = (values) => (values && values.length ? values.map((v) => `- ${v}`).join('\\n') : '- None identified');\n\nconst reports = $input.all().map((item) => {\n  const r = item.json;\n  const a = r.analysis || {};\n  const lines = [];\n\n  lines.push(`# Support review: ${r.clientName}`);\n  lines.push('');\n  lines.push(`Period: ${r.periodStart} to ${r.periodEnd}  `);\n  lines.push(`Growth/risk index: **${r.riskIndex} (${r.riskBand})**, confidence: ${r.confidence}`);\n  lines.push('');\n\n  if (r.parseError) {\n    lines.push(`> Analysis unavailable: ${r.parseError}`);\n    lines.push('');\n  }\n\n  lines.push('## Summary', '', a.client_summary || 'No summary available.', '');\n\n  lines.push('## Ticket statistics', '');\n  lines.push('| Metric | Value |', '|---|---|');\n  lines.push(`| Tickets this period | ${r.stats.currentTickets} |`);\n  lines.push(`| Tickets previous period | ${r.stats.previousTickets} |`);\n  lines.push(`| High/critical priority | ${r.stats.highPriorityTickets} |`);\n  lines.push(`| Open longer than ${r.stats.agingDays} days | ${r.stats.openOlderThanAgingDays} |`);\n  lines.push('');\n\n  lines.push('## Recurring issues', '');\n  const issues = a.recurring_issues || [];\n  if (!issues.length) lines.push('No recurring issues identified.', '');\n  for (const issue of issues) {\n    lines.push(`### ${issue.title} (${issue.ticket_count} tickets, ${issue.category})`, '');\n    lines.push(`Tickets: ${(issue.ticket_numbers || []).join(', ')}  `);\n    lines.push(`Likely root cause: ${issue.likely_root_cause}`, '');\n    lines.push('Remediation:', '', list(issue.remediation), '');\n  }\n\n  lines.push('## Vulnerabilities and risks', '');\n  const vulns = a.vulnerabilities || [];\n  if (!vulns.length) {\n    lines.push('None identified from ticket evidence.', '');\n  } else {\n    lines.push('| Severity | Finding | Evidence | Recommendation |', '|---|---|---|---|');\n    for (const v of vulns) {\n      lines.push(`| ${v.severity} | ${v.title} | ${(v.evidence_ticket_numbers || []).join(', ')} | ${v.recommendation} |`);\n    }\n    lines.push('');\n  }\n\n  lines.push('## Proactive opportunities', '', list(a.proactive_opportunities), '');\n  lines.push('## Documentation notes', '', list(a.documentation_notes), '');\n\n  lines.push('## Risk index breakdown', '');\n  lines.push('| Component | Score (0-1) |', '|---|---|');\n  for (const [k, v] of Object.entries(r.components)) lines.push(`| ${k} | ${v} |`);\n  lines.push('');\n  lines.push('_Generated automatically from PSA ticket data. Review before sharing with the client._');\n\n  return {\n    json: {\n      type: 'client-report',\n      companyId: r.companyId,\n      clientName: r.clientName,\n      riskIndex: r.riskIndex,\n      riskBand: r.riskBand,\n      recurringIssueCount: issues.length,\n      vulnerabilityCount: vulns.length,\n      markdown: `${lines.join('\\n')}\\n`,\n    },\n  };\n});\n\nconst summary = {\n  json: {\n    type: 'portfolio-summary',\n    generatedAt: new Date().toISOString(),\n    clients: reports\n      .map((r) => ({\n        clientName: r.json.clientName,\n        riskIndex: r.json.riskIndex,\n        riskBand: r.json.riskBand,\n        recurringIssues: r.json.recurringIssueCount,\n        vulnerabilities: r.json.vulnerabilityCount,\n      }))\n      .sort((x, y) => y.riskIndex - x.riskIndex),\n  },\n};\n\nreturn [...reports, summary];\n"
+      }
+    },
+    {
+      "id": "a1f0c001-0000-4000-8000-000000000014",
+      "name": "Deliver reports (configure me)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "disabled": true,
+      "notes": "Disabled by default. Point it at your documentation system, Teams/Slack webhook or file storage, or replace it with a native n8n node.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.com/replace-with-your-endpoint",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Manual run": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly schedule": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build ticket query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build ticket query": {
+      "main": [
+        [
+          {
+            "node": "Autotask: query tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autotask: query tickets": {
+      "main": [
+        [
+          {
+            "node": "Build company query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build company query": {
+      "main": [
+        [
+          {
+            "node": "Autotask: query companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autotask: query companies": {
+      "main": [
+        [
+          {
+            "node": "Clean & group by client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & group by client": {
+      "main": [
+        [
+          {
+            "node": "Build Claude request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude request": {
+      "main": [
+        [
+          {
+            "node": "Claude: analyse client tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: analyse client tickets": {
+      "main": [
+        [
+          {
+            "node": "Parse analysis & score risk index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse analysis & score risk index": {
+      "main": [
+        [
+          {
+            "node": "Build client documentation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build client documentation": {
+      "main": [
+        [
+          {
+            "node": "Deliver reports (configure me)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
